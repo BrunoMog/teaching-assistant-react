@@ -6,12 +6,14 @@ export class Class {
   private semester: number;
   private year: number;
   private enrollments: Enrollment[];
+  private metas: string[];
 
-  constructor(topic: string, semester: number, year: number, enrollments: Enrollment[] = []) {
+  constructor(topic: string, semester: number, year: number, enrollments: Enrollment[] = [], metas: string[] = []) {
     this.topic = topic;
     this.semester = semester;
     this.year = year;
     this.enrollments = enrollments;
+    this.metas = metas;
   }
 
   // Getters
@@ -29,6 +31,10 @@ export class Class {
 
   getEnrollments(): Enrollment[] {
     return [...this.enrollments]; // Return copy to prevent external modification
+  }
+
+  getMetas(): string[] {
+    return [...this.metas]; // Return copy to prevent external modification
   }
 
   // Generate unique class ID
@@ -86,6 +92,35 @@ export class Class {
     return this.enrollments.map(enrollment => enrollment.getStudent());
   }
 
+  // Metas management
+  addMeta(meta: string): boolean {
+    // checar se a meta já existe
+    if (!this.metas.includes(meta)) {
+      this.metas.push(meta);
+      return true;
+    }
+    return false;
+  }
+
+  removeMeta(meta: string): boolean {
+    // checar se a meta existe
+    const index = this.metas.indexOf(meta);
+    if (index !== -1) {
+      this.metas.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  updateMeta(oldMeta: string, newMeta: string): boolean {
+    const index = this.metas.indexOf(oldMeta);
+    if (index !== -1 && !this.metas.includes(newMeta)) {
+      this.metas[index] = newMeta;
+      return true;
+    }
+    return false;
+  }
+  
   // Convert to JSON for API responses
   toJSON() {
     return {
