@@ -128,12 +128,13 @@ export class Class {
       topic: this.topic,
       semester: this.semester,
       year: this.year,
-      enrollments: this.enrollments.map(enrollment => enrollment.toJSON())
+      enrollments: this.enrollments.map(enrollment => enrollment.toJSON()),
+      metas: this.metas
     };
   }
 
   // Create Class from JSON object
-  static fromJSON(data: { topic: string; semester: number; year: number; enrollments: any[] }, allStudents: Student[]): Class {
+  static fromJSON(data: { topic: string; semester: number; year: number; enrollments: any[]; metas: string[] }, allStudents: Student[]): Class {
     const enrollments = data.enrollments
       ? data.enrollments.map((enrollmentData: any) => {
           const student = allStudents.find(s => s.getCPF() === enrollmentData.student.cpf);
@@ -143,7 +144,7 @@ export class Class {
           return Enrollment.fromJSON(enrollmentData, student);
         })
       : [];
-    
-    return new Class(data.topic, data.semester, data.year, enrollments);
+
+    return new Class(data.topic, data.semester, data.year, enrollments, data.metas || []);
   }
 }
