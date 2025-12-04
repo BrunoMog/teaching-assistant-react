@@ -9,14 +9,16 @@ export class Class {
   private readonly especificacaoDoCalculoDaMedia: EspecificacaoDoCalculoDaMedia;
   private enrollments: Enrollment[];
   private metas: string[];
+  private metasLocked: boolean;
 
-  constructor(topic: string, semester: number, year: number, especificacaoDoCalculoDaMedia: EspecificacaoDoCalculoDaMedia, enrollments: Enrollment[] = []) {
+  constructor(topic: string, semester: number, year: number, metas: string[] = [], especificacaoDoCalculoDaMedia: EspecificacaoDoCalculoDaMedia, enrollments: Enrollment[] = []) {
     this.topic = topic;
     this.semester = semester;
     this.year = year;
     this.especificacaoDoCalculoDaMedia = especificacaoDoCalculoDaMedia;
     this.enrollments = enrollments;
     this.metas = metas;
+    this.metasLocked = metas.length > 0;
   }
 
   // Getters
@@ -40,6 +42,10 @@ export class Class {
     return [...this.metas]; // Return copy to prevent external modification
   }
 
+  isMetasLocked(): boolean {
+    return this.metasLocked;
+  }
+
   // Generate unique class ID
   getClassId(): string {
     return `${this.topic}-${this.year}-${this.semester}`;
@@ -60,6 +66,26 @@ export class Class {
 
   getEspecificacaoDoCalculoDaMedia(): EspecificacaoDoCalculoDaMedia {
     return this.especificacaoDoCalculoDaMedia;
+  }
+
+  /**
+   * Define as metas em lote. Só pode ser chamada uma vez; depois disso as metas ficam imutáveis.
+   * Lança Error se as metas já estiverem lockadas ou se o array for inválido.
+   */
+  setMetas(metas: string[]): void {
+    if (this.metasLocked) {
+      throw new Error('Metas já foram definidas para a turma e não podem ser alteradas!');
+    }
+    if (!Array.isArray(metas) || metas.length === 0) {
+      throw new Error('As metas de uma turma não devem ser vazias!');
+    }
+    // verificar se array tem duplicatas
+    const hasDuplicates = metas.length !== new Set(metas).size;
+    if (hasDuplicates) {
+      throw new Error('Metas não podem conter duplicatas!');
+    }
+    this.metas = metas;
+    this.metasLocked = true;
   }
 
   // Enrollment management
@@ -98,35 +124,6 @@ export class Class {
   getEnrolledStudents(): Student[] {
     return this.enrollments.map(enrollment => enrollment.getStudent());
   }
-
-  // Metas management
-  addMeta(meta: string): boolean {
-    // checar se a meta já existe
-    if (!this.metas.includes(meta)) {
-      this.metas.push(meta);
-      return true;
-    }
-    return false;
-  }
-
-  removeMeta(meta: string): boolean {
-    // checar se a meta existe
-    const index = this.metas.indexOf(meta);
-    if (index !== -1) {
-      this.metas.splice(index, 1);
-      return true;
-    }
-    return false;
-  }
-
-  updateMeta(oldMeta: string, newMeta: string): boolean {
-    const index = this.metas.indexOf(oldMeta);
-    if (index !== -1 && !this.metas.includes(newMeta)) {
-      this.metas[index] = newMeta;
-      return true;
-    }
-    return false;
-  }
   
   // Convert to JSON for API responses
   toJSON() {
@@ -135,13 +132,15 @@ export class Class {
       topic: this.topic,
       semester: this.semester,
       year: this.year,
+      metas: this.metas,
+      metasLocked: this.metasLocked,
       especificacaoDoCalculoDaMedia: this.especificacaoDoCalculoDaMedia.toJSON(),
       enrollments: this.enrollments.map(enrollment => enrollment.toJSON())
     };
   }
 
   // Create Class from JSON object
-  static fromJSON(data: { topic: string; semester: number; year: number; especificacaoDoCalculoDaMedia: any, enrollments: any[] }, allStudents: Student[]): Class {
+  static fromJSON(data: { topic: string; semester: number; year: number; metas: string[]; especificacaoDoCalculoDaMedia: any, enrollments: any[] }, allStudents: Student[]): Class {
     const enrollments = data.enrollments
       ? data.enrollments.map((enrollmentData: any) => {
           const student = allStudents.find(s => s.getCPF() === enrollmentData.student.cpf);
@@ -155,6 +154,14 @@ export class Class {
     // Novo carregamento do EspecificacaoDoCalculoDaMedia
     const especificacaoDoCalculoDaMedia = EspecificacaoDoCalculoDaMedia.fromJSON(data.especificacaoDoCalculoDaMedia);
 
-    return new Class(data.topic, data.semester, data.year, especificacaoDoCalculoDaMedia, enrollments);
+    const metas = Array.isArray(data.metas) ? data.metas : [];
+    const cls = new Class(data.topic, data.semester, data.year, metas, especificacaoDoCalculoDaMedia, enrollments);
+    // Se o JSON já veio com metas e quisermos respeitar lock vindo do arquivo, checar data.metasLocked
+    if ((data as any).metasLocked) {
+      // forçar lock mesmo que metas tenha sido passada vazia (já tratada acima)
+      (cls as any).metasLocked = true;
+    }
+
+    return cls;
   }
 }

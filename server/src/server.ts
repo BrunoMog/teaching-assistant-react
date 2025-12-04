@@ -48,6 +48,8 @@ const saveDataToFile = (): void => {
         topic: classObj.getTopic(),
         semester: classObj.getSemester(),
         year: classObj.getYear(),
+        metas: classObj.getMetas(),
+        metasLocked: classObj.isMetasLocked(),
         especificacaoDoCalculoDaMedia: classObj.getEspecificacaoDoCalculoDaMedia().toJSON(),
         enrollments: classObj.getEnrollments().map(enrollment => ({
           studentCPF: enrollment.getStudent().getCPF(),
@@ -92,7 +94,7 @@ const loadDataFromFile = (): void => {
       if (data.classes && Array.isArray(data.classes)) {
         data.classes.forEach((classData: any) => {
           try {
-            const classObj = new Class(classData.topic, classData.semester, classData.year, EspecificacaoDoCalculoDaMedia.fromJSON(classData.especificacaoDoCalculoDaMedia));
+            const classObj = new Class(classData.topic, classData.semester, classData.year, classData.metas, EspecificacaoDoCalculoDaMedia.fromJSON(classData.especificacaoDoCalculoDaMedia));
             classes.addClass(classObj);
 
             // Load enrollments for this class
@@ -301,7 +303,7 @@ app.post('/api/classes', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Topic, semester, and year are required' });
     }
 
-    const classObj = new Class(topic, semester, year, DEFAULT_ESPECIFICACAO_DO_CALCULO_DA_MEDIA);
+    const classObj = new Class(topic, semester, year, [], DEFAULT_ESPECIFICACAO_DO_CALCULO_DA_MEDIA);
     const newClass = classes.addClass(classObj);
     triggerSave(); // Save to file after adding class
     res.status(201).json(newClass.toJSON());
@@ -364,84 +366,34 @@ app.get('/api/classes/:id/metas', (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Class not found' });
     }
     const metas = classObj.getMetas();
-    res.json(metas);
+    res.json({ metas });
   } catch (error) {
     res.status(400).json({ error: (error as Error).message });
   }
 });
 
-// POST /api/classes/:id/metas - Adicionar uma meta a uma turma
+// POST /api/classes/:id/metas - Adicionar as metas de uma turma
 app.post('/api/classes/:id/metas', (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { meta } = req.body;
+    const { metas } = req.body;
 
-    if (!meta) {
-      return res.status(400).json({ error: 'Campo título é obrigatório' });
-    }
-
+    // verificar se a turma existe
     const classObj = classes.findClassById(id);
     if (!classObj) {
-      return res.status(404).json({ error: 'Class not found' });
+      return res.status(404).json({ error: 'Turma não encontrada!' });
     }
 
-    const success = classObj.addMeta(meta);
-    if (!success) {
-      return res.status(409).json({ error: 'Já existe uma meta com este título' });
+    try {
+      classObj.setMetas(metas);
+    } catch (err) {
+      return res.status(409).json({ error: (err as Error).message });
     }
 
-    triggerSave(); // Save to file after adding meta
-    res.status(201).json({ meta });
-  } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
-  }
-});
-
-// PUT /api/classes/:id/metas - Atualizar uma meta de uma turma
-app.put('/api/classes/:id/metas', (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { oldMeta, newMeta } = req.body;
-
-    if (!oldMeta || !newMeta) {
-      return res.status(400).json({ error: 'Campo título é obrigatório' });
-    }
-
-    const classObj = classes.findClassById(id);
-    if (!classObj) {
-      return res.status(404).json({ error: 'Class not found' });
-    }
-
-    const success = classObj.updateMeta(oldMeta, newMeta);
-    if (!success) {
-      return res.status(409).json({ error: 'Já existe uma meta com este título' });
-    }
-
-    triggerSave(); // Save to file after updating meta
-    res.status(200).json({ oldMeta, newMeta });
-  } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
-  }
-});
-
-// DELETE /api/classes/:id/metas - Remover uma meta de uma turma
-app.delete('/api/classes/:id/metas', (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { meta } = req.body;
-    if (!meta) {
-      return res.status(400).json({ error: 'Campo título é obrigatório' });
-    }
-    const classObj = classes.findClassById(id);
-    if (!classObj) {
-      return res.status(404).json({ error: 'Class not found' });
-    }
-    const success = classObj.removeMeta(meta);
-    if (!success) {
-      return res.status(404).json({ error: 'Meta não encontrada' });
-    }
-    triggerSave(); // Save to file after removing meta
-    res.status(200).json({ message: 'Meta removida com sucesso' });
+    triggerSave(); // Save to file after adding metas
+    
+    // retornar uma mensagem de metas criadas com sucesso
+    res.status(201).json({ message: 'Metas criadas com sucesso!' });
   } catch (error) {
     res.status(400).json({ error: (error as Error).message });
   }
