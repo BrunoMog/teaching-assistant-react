@@ -113,7 +113,7 @@ const App: React.FC = () => {
   const handleSuccess = (message: string) => {
     setSuccess(message);
     // Clear success after a short timeout
-    setTimeout(() => setSuccess(''), 4000);
+  setTimeout(() => setSuccess(''), 8000);
   };
 
   return (

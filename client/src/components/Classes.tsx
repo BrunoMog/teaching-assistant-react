@@ -184,12 +184,9 @@ const Classes: React.FC<ClassesProps> = ({
   };
 
   // Metas UI handlers
+  // Add meta locally; do not block duplicates here — server is responsible for uniqueness
   const handleAddMetaLocally = (meta: string) => {
     if (!meta || !meta.trim()) return;
-    if (localMetas.includes(meta)) {
-      onError('Meta já adicionada');
-      return;
-    }
     setLocalMetas(prev => [...prev, meta]);
   };
 
